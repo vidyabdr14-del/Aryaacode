@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayZap + SubRadar AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#0a0a0f; --paper:#f5f0e8; --accent:#ff3c3c;
+  --green:#00c853; --yellow:#ffd600; --blue:#1a73e8;
+  --purple:#7c3aed; --orange:#f97316;
+  --card-bg:#ffffff; --border:#0a0a0f;
+  --shadow:4px 4px 0px #0a0a0f; --shadow-lg:6px 6px 0px #0a0a0f;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--paper);font-family:'Syne',sans-serif;color:var(--ink);
+  min-height:100vh;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,0,0,0.05) 39px,rgba(0,0,0,0.05) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,0,0,0.05) 39px,rgba(0,0,0,0.05) 40px);
+}
+.mono{font-family:'Space Mono',monospace;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+/* NAV */
+.app-nav{background:#1a1a24;display:flex;align-items:stretch;border-bottom:3px solid var(--accent);position:sticky;top:0;z-index:200;}
+.app-nav-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border:none;background:transparent;font-family:'Syne',sans-serif;font-weight:800;font-size:0.82rem;color:rgba(245,240,232,0.45);letter-spacing:.5px;cursor:pointer;transition:all 0.18s;border-bottom:3px solid transparent;margin-bottom:-3px;}
+.app-nav-btn:hover{color:rgba(245,240,232,0.8);}
+.app-nav-btn.active{color:var(--paper);border-bottom-color:var(--accent);background:rgba(255,60,60,0.07);}
+.app-nav-btn.active .hi{color:var(--accent);}
+.nav-divider{width:1px;background:rgba(255,255,255,0.08);align-self:stretch;margin:8px 0;}
+.app-panel{display:none;} .app-panel.visible{display:block;}
+.nav-live-dot,.mini-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite;display:inline-block;}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:4px;animation:blink .8s infinite;}
+
+/* PAYZAP */
+.upi-header{background:var(--ink);color:var(--paper);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid rgba(255,60,60,0.4);gap:10px;}
+.upi-logo{font-size:1.5rem;font-weight:800;letter-spacing:-1px;}
+.upi-logo span{color:var(--accent);}
+.upi-id-badge{background:var(--accent);color:white;font-family:'Space Mono',monospace;font-size:.72rem;padding:4px 10px;border:2px solid white;font-weight:700;}
+.btn-goto-subr{background:transparent;border:2px solid rgba(0,200,83,0.5);color:var(--green);font-family:'Syne',sans-serif;font-weight:700;font-size:.72rem;padding:5px 12px;cursor:pointer;letter-spacing:.5px;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn-goto-subr:hover{background:var(--green);color:var(--ink);}
+
+.balance-card{background:var(--ink);color:var(--paper);border:3px solid var(--ink);box-shadow:var(--shadow-lg);padding:28px 24px 20px;position:relative;overflow:hidden;margin:20px 16px;}
+.balance-card::before{content:'₹';position:absolute;right:-10px;top:-20px;font-size:8rem;font-weight:800;color:rgba(255,255,255,0.05);line-height:1;}
+.balance-label{font-size:.75rem;letter-spacing:3px;text-transform:uppercase;opacity:.6;}
+.balance-amount{font-family:'Space Mono',monospace;font-size:2.8rem;font-weight:700;letter-spacing:-2px;margin:6px 0 16px;}
+.balance-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-upi{border:2px solid var(--paper);background:transparent;color:var(--paper);font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;padding:8px 16px;cursor:pointer;transition:all .15s;letter-spacing:.5px;}
+.btn-upi:hover{background:var(--paper);color:var(--ink);}
+
+.section-header{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;color:var(--ink);opacity:.5;padding:0 16px;margin:20px 0 10px;}
+.quick-pay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px;margin-bottom:20px;}
+.quick-pay-btn{background:var(--card-bg);border:2px solid var(--border);box-shadow:3px 3px 0 var(--border);padding:14px 8px;text-align:center;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.quick-pay-btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--border);}
+.quick-pay-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--border);}
+.quick-pay-icon{font-size:1.6rem;}
+.quick-pay-label{font-size:.65rem;font-weight:700;letter-spacing:.5px;}
+
+.pay-form-card{background:var(--card-bg);border:3px solid var(--border);box-shadow:var(--shadow-lg);margin:0 16px 20px;padding:20px;}
+.form-label-custom{font-size:.7rem;letter-spacing:2px;text-transform:uppercase;font-weight:700;display:block;margin-bottom:6px;}
+.input-custom{width:100%;border:2px solid var(--border);background:var(--paper);font-family:'Space Mono',monospace;font-size:.95rem;padding:10px 14px;outline:none;transition:box-shadow .15s;color:var(--ink);}
+.input-custom:focus{box-shadow:3px 3px 0 var(--border);}
+.input-custom::placeholder{opacity:.4;}
+.amount-row{display:flex;gap:10px;align-items:center;}
+.rupee-prefix{font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;}
+.input-amount{flex:1;border:2px solid var(--border);background:var(--paper);font-family:'Space Mono',monospace;font-size:1.4rem;padding:10px 14px;outline:none;color:var(--ink);}
+.sub-toggle-row{display:flex;align-items:center;gap:12px;padding:12px;background:rgba(124,58,237,0.07);border:2px dashed rgba(124,58,237,0.3);margin-top:14px;flex-wrap:wrap;}
+.toggle-switch{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#ccc;border-radius:24px;transition:.3s;border:2px solid var(--border);}
+.toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;bottom:2px;background:white;border-radius:50%;transition:.3s;}
+input:checked+.toggle-slider{background:var(--purple);}
+input:checked+.toggle-slider:before{transform:translateX(20px);}
+.toggle-label{font-size:.8rem;font-weight:700;color:var(--purple);}
+.toggle-sub{font-size:.65rem;opacity:.5;margin-top:2px;}
+.cycle-select{border:2px solid var(--purple);background:rgba(124,58,237,0.08);font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;padding:6px 10px;color:var(--purple);outline:none;cursor:pointer;}
+.btn-pay{width:100%;background:var(--accent);color:white;border:3px solid var(--border);box-shadow:var(--shadow);font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;padding:14px;cursor:pointer;letter-spacing:1px;transition:all .12s;margin-top:16px;text-transform:uppercase;}
+.btn-pay:hover{transform:translate(-2px,-2px);box-shadow:var(--shadow-lg);}
+.btn-pay:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--border);}
+
+.txn-list{padding:0 16px 100px;}
+.txn-item{background:var(--card-bg);border:2px solid var(--border);box-shadow:2px 2px 0 var(--border);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;animation:slideIn .25s ease both;}
+.txn-icon{font-size:1.4rem;width:36px;text-align:center;flex-shrink:0;}
+.txn-info{flex:1;min-width:0;}
+.txn-merchant{font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txn-meta{font-size:.7rem;opacity:.5;font-family:'Space Mono',monospace;}
+.txn-right{text-align:right;flex-shrink:0;}
+.txn-amount{font-family:'Space Mono',monospace;font-weight:700;font-size:.95rem;color:var(--accent);}
+.txn-date{font-size:.65rem;opacity:.45;margin-top:2px;}
+.sub-badge{background:var(--purple);color:white;font-size:.55rem;font-weight:800;padding:1px 5px;letter-spacing:.5px;margin-left:5px;vertical-align:middle;}
+
+.ai-detect-banner{background:linear-gradient(135deg,#1a1a24,#2d1a4e);border:2px solid var(--purple);color:white;margin:0 16px 16px;padding:14px 16px;cursor:pointer;}
+.ai-banner-title{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:4px;}
+.ai-banner-msg{font-size:.85rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+.ai-pulse{width:8px;height:8px;border-radius:50%;background:#a78bfa;animation:blink .8s infinite;flex-shrink:0;}
+
+/* SUBR */
+.subr-header{background:#1a1a24;color:var(--paper);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--purple);}
+.subr-logo{font-size:1.3rem;font-weight:800;letter-spacing:-.5px;}
+.subr-logo span{color:#a78bfa;}
+
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px;}
+.stat-card{background:var(--card-bg);border:2px solid var(--border);box-shadow:var(--shadow);padding:14px 16px;}
+.stat-card.dark{background:#1a1a24;color:var(--paper);border-color:var(--purple);box-shadow:4px 4px 0 var(--purple);}
+.stat-lbl{font-size:.62rem;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-bottom:4px;}
+.stat-val{font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;}
+.stat-sub{font-size:.65rem;opacity:.45;margin-top:3px;}
+
+.tabs-row{display:flex;gap:0;padding:0 16px;border-bottom:2px solid var(--border);}
+.btn-tab{flex:1;background:transparent;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:'Syne',sans-serif;font-weight:700;font-size:.68rem;letter-spacing:.5px;text-transform:uppercase;padding:10px 4px;cursor:pointer;color:rgba(10,10,15,0.45);transition:all .15s;}
+.btn-tab.active{color:var(--purple);border-bottom-color:var(--purple);}
+.tab-panel{display:none;} .tab-panel.visible{display:block;}
+
+.sub-list{padding:12px 16px 100px;}
+.sub-card{background:var(--card-bg);border:2px solid var(--border);box-shadow:var(--shadow);padding:16px;margin-bottom:10px;position:relative;animation:slideIn .25s ease both;}
+.sub-card.cancelled{opacity:.55;border-style:dashed;}
+.sub-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.sub-icon{font-size:1.8rem;flex-shrink:0;}
+.sub-name{font-weight:800;font-size:.95rem;}
+.sub-cat{font-size:.68rem;opacity:.5;text-transform:uppercase;letter-spacing:1px;margin-top:1px;}
+.sub-right{text-align:right;margin-left:auto;}
+.sub-amount{font-family:'Space Mono',monospace;font-weight:700;font-size:1.1rem;}
+.sub-mo{font-size:.65rem;opacity:.45;margin-top:2px;}
+.cycle-pill{font-size:.6rem;font-weight:800;letter-spacing:1px;padding:2px 7px;border:1.5px solid var(--border);text-transform:uppercase;display:inline-block;margin-top:4px;}
+.cycle-pill.monthly{background:#e8f5e9;border-color:var(--green);color:var(--green);}
+.cycle-pill.yearly{background:#e3f2fd;border-color:var(--blue);color:var(--blue);}
+.cycle-pill.weekly{background:#fff8e1;border-color:var(--yellow);color:#a37900;}
+.cycle-pill.quarterly{background:#f3e5f5;border-color:var(--purple);color:var(--purple);}
+
+.sub-bottom{display:flex;justify-content:space-between;font-size:.72rem;border-top:1px solid rgba(0,0,0,0.07);padding-top:8px;margin-bottom:8px;}
+.sub-meta-lbl{opacity:.4;text-transform:uppercase;letter-spacing:1px;font-size:.6rem;}
+.sub-meta-val{font-family:'Space Mono',monospace;font-weight:700;}
+
+.sub-actions{display:flex;gap:8px;margin-top:8px;}
+.btn-sub-action{flex:1;border:2px solid var(--border);background:transparent;font-family:'Syne',sans-serif;font-weight:700;font-size:.68rem;padding:7px 8px;cursor:pointer;letter-spacing:.5px;transition:all .12s;text-transform:uppercase;}
+.btn-sub-action.remind{border-color:var(--yellow);color:#a37900;background:rgba(255,214,0,0.08);}
+.btn-sub-action.remind:hover{background:var(--yellow);color:var(--ink);}
+.btn-sub-action.cancel{border-color:var(--accent);color:var(--accent);background:rgba(255,60,60,0.06);}
+.btn-sub-action.cancel:hover{background:var(--accent);color:white;}
+.btn-sub-action.restore{border-color:var(--green);color:var(--green);background:rgba(0,200,83,0.06);}
+.cancelled-stamp{position:absolute;top:10px;right:10px;background:var(--accent);color:white;font-size:.6rem;font-weight:800;letter-spacing:1px;padding:3px 7px;transform:rotate(2deg);}
+.due-badge{position:absolute;top:10px;right:10px;background:var(--yellow);border:2px solid var(--border);color:var(--ink);font-size:.55rem;font-weight:800;padding:2px 7px;letter-spacing:.5px;animation:blink .9s infinite;}
+
+.conf-row{display:flex;align-items:center;gap:8px;margin:6px 0;}
+.conf-lbl{font-size:.6rem;opacity:.4;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;}
+.conf-track{flex:1;height:5px;background:rgba(0,0,0,0.08);overflow:hidden;}
+.conf-fill{height:100%;transition:width .5s ease;}
+.conf-pct{font-family:'Space Mono',monospace;font-size:.65rem;font-weight:700;opacity:.6;width:28px;text-align:right;}
+
+.next-billing{display:flex;align-items:center;gap:6px;font-size:.7rem;margin:6px 0;padding:5px 8px;background:rgba(255,214,0,0.12);border-left:3px solid var(--yellow);}
+.next-billing .nb-lbl{opacity:.5;}
+.next-billing .nb-date{font-weight:700;font-family:'Space Mono',monospace;font-size:.68rem;}
+
+/* AI Tab */
+.ai-panel{padding:12px 16px 100px;}
+.ai-section-title{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:.4;margin:16px 0 8px;}
+.ai-how-card{background:#1a1a24;border:2px solid var(--purple);padding:14px;margin-bottom:14px;color:white;}
+.ai-how-title{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;}
+.ai-how-body{font-size:.8rem;line-height:1.6;color:rgba(255,255,255,0.7);}
+.ai-how-body strong{color:#a78bfa;}
+.ai-detect-card{background:#1a1a24;color:var(--paper);border:2px solid var(--purple);padding:16px;margin-bottom:10px;position:relative;overflow:hidden;animation:slideIn .3s ease both;}
+.ai-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ai-card-icon{font-size:1.6rem;}
+.ai-card-name{font-weight:800;}
+.ai-card-cat{font-size:.65rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;}
+.ai-card-amount{font-family:'Space Mono',monospace;font-weight:700;font-size:1rem;margin-left:auto;color:#a78bfa;}
+.ai-signals{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ai-signal{font-size:.6rem;font-weight:700;padding:3px 8px;border:1.5px solid rgba(167,139,250,0.4);color:#a78bfa;letter-spacing:.5px;}
+.ai-conf-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ai-conf-track{flex:1;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;}
+.ai-conf-fill{height:100%;border-radius:4px;}
+.ai-conf-pct{font-family:'Space Mono',monospace;font-size:.75rem;font-weight:700;color:#a78bfa;}
+.ai-card-actions{display:flex;gap:8px;}
+.btn-ai-action{flex:1;padding:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:.7rem;letter-spacing:.5px;cursor:pointer;border:2px solid;transition:all .15s;text-transform:uppercase;}
+.btn-ai-action.approve{border-color:var(--green);color:var(--green);background:rgba(0,200,83,0.1);}
+.btn-ai-action.approve:hover{background:var(--green);color:var(--ink);}
+.btn-ai-action.dismiss{border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.4);background:transparent;}
+.btn-ai-action.dismiss:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Reminders */
+.reminder-panel{padding:12px 16px 100px;}
+.reminder-card{background:var(--card-bg);border:2px solid var(--border);padding:14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:3px 3px 0 var(--border);animation:slideIn .25s ease both;}
+.reminder-card.urgent{border-color:var(--accent);box-shadow:3px 3px 0 var(--accent);}
+.reminder-card.upcoming{border-color:var(--yellow);box-shadow:3px 3px 0 var(--yellow);}
+.reminder-card.ok{border-color:var(--green);box-shadow:3px 3px 0 var(--green);}
+.reminder-icon{font-size:1.5rem;flex-shrink:0;}
+.reminder-info{flex:1;}
+.reminder-name{font-weight:800;font-size:.9rem;}
+.reminder-due{font-size:.72rem;font-weight:700;margin-top:2px;}
+.reminder-due.urgent{color:var(--accent);}
+.reminder-due.upcoming{color:#a37900;}
+.reminder-due.ok{color:var(--green);}
+.reminder-amount{font-family:'Space Mono',monospace;font-weight:700;font-size:.9rem;flex-shrink:0;}
+.btn-remind-dismiss{border:2px solid var(--border);background:transparent;font-family:'Syne',sans-serif;font-weight:700;font-size:.65rem;padding:5px 10px;cursor:pointer;margin-top:6px;transition:all .12s;}
+.btn-remind-dismiss:hover{background:var(--ink);color:var(--paper);}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,0.85);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--paper);border:3px solid var(--border);box-shadow:var(--shadow-lg);max-width:420px;width:100%;animation:slideIn .2s ease;max-height:90vh;overflow-y:auto;}
+.modal-header{background:var(--ink);color:var(--paper);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;}
+.modal-title{font-size:1rem;font-weight:800;}
+.modal-close{background:transparent;border:none;color:var(--paper);font-size:1.4rem;cursor:pointer;line-height:1;}
+.modal-body{padding:20px;}
+.cancel-steps{margin:12px 0;}
+.cancel-step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.07);}
+.cancel-step:last-child{border-bottom:none;}
+.step-num{width:24px;height:24px;background:var(--accent);color:white;font-weight:800;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-text{font-size:.82rem;font-weight:600;line-height:1.4;}
+.step-sub{font-size:.7rem;opacity:.5;margin-top:2px;}
+.modal-footer{padding:0 20px 20px;display:flex;gap:10px;}
+.btn-modal{flex:1;padding:12px;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;letter-spacing:.5px;cursor:pointer;border:2px solid var(--border);transition:all .12s;}
+.btn-modal.confirm{background:var(--accent);color:white;border-color:var(--accent);}
+.btn-modal.confirm:hover{box-shadow:var(--shadow);}
+.btn-modal.back{background:transparent;color:var(--ink);}
+.btn-modal.back:hover{background:var(--ink);color:var(--paper);}
+.cancel-result{text-align:center;padding:10px 0 20px;}
+.cancel-result-icon{font-size:3rem;margin-bottom:10px;}
+.cancel-result-title{font-weight:800;font-size:1.1rem;margin-bottom:6px;}
+.cancel-result-msg{font-size:.8rem;opacity:.6;line-height:1.5;}
+.savings-highlight{background:#e8f5e9;border:2px solid var(--green);padding:12px 16px;margin:12px 0;text-align:center;}
+.savings-amount{font-family:'Space Mono',monospace;font-size:1.5rem;font-weight:700;color:var(--green);}
+.savings-label{font-size:.7rem;opacity:.6;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+
+/* Insights */
+.insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px 100px;}
+.insight-card{background:var(--card-bg);border:2px solid var(--border);box-shadow:var(--shadow);padding:14px;}
+.insight-card.full{grid-column:1/-1;}
+.insight-icon{font-size:1.5rem;margin-bottom:6px;}
+.insight-title{font-size:.65rem;letter-spacing:1px;text-transform:uppercase;opacity:.45;margin-bottom:4px;}
+.insight-val{font-family:'Space Mono',monospace;font-weight:700;font-size:.9rem;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-label{font-size:.75rem;font-weight:600;min-width:110px;}
+.bar-track{flex:1;height:10px;background:rgba(0,0,0,0.08);border:1.5px solid var(--border);overflow:hidden;}
+.bar-fill{height:100%;background:var(--ink);transition:width .6s ease;}
+.bar-val{font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;min-width:70px;text-align:right;}
+
+.filters-row{display:flex;gap:8px;padding:10px 16px;overflow-x:auto;scrollbar-width:none;}
+.filters-row::-webkit-scrollbar{display:none;}
+.filter-select{border:2px solid var(--border);background:var(--card-bg);font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;padding:6px 10px;outline:none;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.search-row{padding:10px 16px 0;}
+.search-input{width:100%;border:2px solid var(--border);background:var(--card-bg);font-family:'Space Mono',monospace;font-size:.85rem;padding:9px 12px;outline:none;}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;padding:10px 20px;border:2px solid var(--accent);box-shadow:var(--shadow);opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.empty-state{text-align:center;padding:50px 20px;opacity:.5;}
+.empty-state .e{font-size:3rem;margin-bottom:12px;}
+.empty-state h3{font-size:1rem;font-weight:800;margin-bottom:6px;}
+.empty-state p{font-size:.8rem;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<nav class="app-nav">
+  <button class="app-nav-btn active" id="nav-pay" onclick="switchApp('pay')">
+    <span style="color:var(--paper);font-weight:800;">Pay<span class="hi">Zap</span></span>
+    <span style="font-size:.55rem;border:1.5px solid rgba(255,255,255,0.25);padding:1px 5px;font-family:'Space Mono',monospace;letter-spacing:1px;opacity:.65;">UPI</span>
+  </button>
+  <div class="nav-divider"></div>
+  <button class="app-nav-btn" id="nav-sub" onclick="switchApp('sub')">
+    <span class="nav-live-dot"></span>
+    <span style="color:var(--paper);font-weight:800;">Sub<span class="hi">Radar</span></span>
+    <span id="globalNotifDot" style="display:none;" class="notif-dot"></span>
+  </button>
+</nav>
+
+<!-- PAYZAP -->
+<div class="app-panel visible" id="panel-pay">
+  <div class="upi-header">
+    <div class="upi-logo">Pay<span>Zap</span></div>
+    <div class="upi-id-badge mono">user@payzap</div>
+    <button class="btn-goto-subr" onclick="switchApp('sub')"><span class="mini-dot"></span>SubRadar</button>
+  </div>
+
+  <div class="balance-card">
+    <div class="balance-label">Available Balance</div>
+    <div style="display:flex;align-items:center;gap:12px;margin:6px 0 16px;">
+      <div class="balance-amount mono" id="payzapBal" style="margin:0;">₹24,500.00</div>
+      <button onclick="openBalanceEditor()" title="Edit balance" style="background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.7);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;flex-shrink:0;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">✏️</button>
+    </div>
+    <div class="balance-actions">
+      <button class="btn-upi" onclick="openAddMoney()">+ Add Money</button>
+      <button class="btn-upi" onclick="showToast('Linked to HDFC ••3421')">Bank Linked ✓</button>
+    </div>
+  </div>
+
+  <!-- Balance Editor Modal -->
+  <div class="modal-overlay" id="balanceModal">
+    <div class="modal-box" style="max-width:340px;">
+      <div class="modal-header">
+        <div class="modal-title">Edit Balance</div>
+        <button class="modal-close" onclick="closeBalanceModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <label class="form-label-custom">Set Balance Amount</label>
+          <div class="amount-row">
+            <span class="rupee-prefix">₹</span>
+            <input class="input-amount input-custom" id="balanceInput" type="number" placeholder="0" min="0" />
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="setBalancePreset(10000)">+₹10K</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="setBalancePreset(25000)">+₹25K</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="setBalancePreset(50000)">+₹50K</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="setBalancePreset(100000)">+₹1L</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal back" onclick="closeBalanceModal()">Cancel</button>
+        <button class="btn-modal confirm" onclick="applyBalance()">Set Balance</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Money Modal -->
+  <div class="modal-overlay" id="addMoneyModal">
+    <div class="modal-box" style="max-width:340px;">
+      <div class="modal-header">
+        <div class="modal-title">Add Money</div>
+        <button class="modal-close" onclick="closeAddMoneyModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <label class="form-label-custom">Amount to Add</label>
+          <div class="amount-row">
+            <span class="rupee-prefix">₹</span>
+            <input class="input-amount input-custom" id="addMoneyInput" type="number" placeholder="0" min="1" />
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="document.getElementById('addMoneyInput').value=500">₹500</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="document.getElementById('addMoneyInput').value=1000">₹1,000</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="document.getElementById('addMoneyInput').value=5000">₹5,000</button>
+          <button class="btn-modal back" style="flex:none;padding:8px 14px;font-size:.75rem;" onclick="document.getElementById('addMoneyInput').value=10000">₹10,000</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal back" onclick="closeAddMoneyModal()">Cancel</button>
+        <button class="btn-modal confirm" onclick="applyAddMoney()">Add Money</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ai-detect-banner" id="aiBanner" style="display:none;" onclick="switchApp('sub');setTimeout(()=>switchSubrTab('ai'),100)">
+    <div class="ai-banner-title">🤖 SubRadar AI Detection</div>
+    <div class="ai-banner-msg"><span class="ai-pulse"></span><span id="aiBannerMsg">Scanning transactions...</span></div>
+  </div>
+
+  <div class="section-header">Quick Pay</div>
+  <div class="quick-pay-grid">
+    <div class="quick-pay-btn" onclick="fillQuick('Netflix','Entertainment',499,'monthly')"><div class="quick-pay-icon">🎬</div><div class="quick-pay-label">Netflix</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Spotify','Music',119,'monthly')"><div class="quick-pay-icon">🎵</div><div class="quick-pay-label">Spotify</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Swiggy','Food',280,'monthly')"><div class="quick-pay-icon">🍔</div><div class="quick-pay-label">Swiggy</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Amazon Prime','Shopping',1499,'yearly')"><div class="quick-pay-icon">📦</div><div class="quick-pay-label">Prime</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Hotstar','Entertainment',299,'monthly')"><div class="quick-pay-icon">🌟</div><div class="quick-pay-label">Hotstar</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Notion','Productivity',800,'yearly')"><div class="quick-pay-icon">📝</div><div class="quick-pay-label">Notion</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('Gym','Health',1500,'monthly')"><div class="quick-pay-icon">💪</div><div class="quick-pay-label">Gym</div></div>
+    <div class="quick-pay-btn" onclick="fillQuick('','Other',0,'monthly')"><div class="quick-pay-icon">⚡</div><div class="quick-pay-label">Custom</div></div>
+  </div>
+
+  <div class="pay-form-card">
+    <div style="margin-bottom:14px;">
+      <label class="form-label-custom">Pay To (UPI ID / Name)</label>
+      <input class="input-custom" id="payTo" placeholder="merchant@upi or name" />
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label-custom">Category</label>
+      <select class="input-custom" id="payCat">
+        <option>Entertainment</option><option>Music</option><option>Food</option>
+        <option>Shopping</option><option>Productivity</option><option>Health</option>
+        <option>Finance</option><option>Education</option><option>Utilities</option><option>Other</option>
+      </select>
+    </div>
+    <div class="amount-row">
+      <span class="rupee-prefix">₹</span>
+      <input class="input-amount input-custom" id="payAmt" type="number" placeholder="0" min="0" />
+    </div>
+    <div style="margin:14px 0 0;">
+      <label class="form-label-custom">Note (optional)</label>
+      <input class="input-custom" id="payNote" placeholder="e.g. Monthly renewal" />
+    </div>
+    <div class="sub-toggle-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="subToggle" onchange="toggleCycle()" />
+        <span class="toggle-slider"></span>
+      </label>
+      <div style="flex:1;">
+        <div class="toggle-label">🔄 Mark as Subscription</div>
+        <div class="toggle-sub">SubRadar will track & auto-detect recurrence</div>
+      </div>
+      <select class="cycle-select" id="cycleSelect" style="display:none;">
+        <option value="weekly">Weekly</option>
+        <option value="monthly" selected>Monthly</option>
+        <option value="quarterly">Quarterly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <button class="btn-pay" onclick="sendPayment()">⚡ PAY NOW</button>
+  </div>
+
+  <div class="section-header">Recent Transactions</div>
+  <div class="txn-list" id="txnList">
+    <div class="empty-state"><div class="e">💳</div><h3>No transactions yet</h3><p>Make a payment above to get started.</p></div>
+  </div>
+</div>
+
+<!-- SUBR -->
+<div class="app-panel" id="panel-sub">
+  <div class="subr-header">
+    <div class="subr-logo">Sub<span>Radar</span> <span style="font-size:.55rem;color:rgba(255,255,255,0.25);font-family:'Space Mono',monospace;">AI</span></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="syncTime" style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(255,255,255,0.3);">live</span>
+      <span class="nav-live-dot"></span>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card dark">
+      <div class="stat-lbl">Monthly Sub Cost</div>
+      <div class="stat-val">₹<span id="statMonthly">0</span></div>
+      <div class="stat-sub" id="statYearlySub">0 plans</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Active Subs</div>
+      <div class="stat-val" id="statCount">0</div>
+      <div class="stat-sub" id="statTxns">0 txns total</div>
+    </div>
+  </div>
+
+  <div class="tabs-row">
+    <button class="btn-tab active" onclick="switchSubrTab('subs')">Subs <span id="subCount">0</span></button>
+    <button class="btn-tab" onclick="switchSubrTab('ai')">🤖 AI <span id="aiDetectedCount">0</span></button>
+    <button class="btn-tab" onclick="switchSubrTab('reminders')">🔔 Remind <span id="reminderCount" class="notif-dot" style="display:none;"></span></button>
+    <button class="btn-tab" onclick="switchSubrTab('insights')">📊 Insights</button>
+  </div>
+
+  <!-- SUBS TAB -->
+  <div class="tab-panel visible" id="subr-tab-subs">
+    <div class="search-row"><input class="search-input" id="subSearch" placeholder="Search subscriptions…" oninput="renderSubs()" /></div>
+    <div class="filters-row">
+      <select class="filter-select" id="subCatF" onchange="renderSubs()">
+        <option value="">All Categories</option>
+        <option>Entertainment</option><option>Music</option><option>Food</option>
+        <option>Shopping</option><option>Productivity</option><option>Health</option>
+        <option>Finance</option><option>Education</option><option>Utilities</option><option>Other</option>
+      </select>
+      <select class="filter-select" id="subCycleF" onchange="renderSubs()">
+        <option value="">All Cycles</option>
+        <option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+        <option value="quarterly">Quarterly</option><option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <div class="sub-list" id="subList"></div>
+  </div>
+
+  <!-- AI TAB -->
+  <div class="tab-panel" id="subr-tab-ai">
+    <div class="ai-panel">
+      <div class="ai-how-card">
+        <div class="ai-how-title">How AI Detection Works</div>
+        <div class="ai-how-body">SubRadar AI scans your transactions for <strong>amount consistency</strong>, <strong>merchant recurrence</strong>, <strong>billing cycle patterns</strong>, and <strong>known subscription services</strong> to auto-detect subscriptions you forgot to tag. Confidence scores are calculated live.</div>
+      </div>
+      <div id="aiDetectedList"></div>
+    </div>
+  </div>
+
+  <!-- REMINDERS TAB -->
+  <div class="tab-panel" id="subr-tab-reminders">
+    <div class="reminder-panel" id="reminderList"></div>
+  </div>
+
+  <!-- INSIGHTS TAB -->
+  <div class="tab-panel" id="subr-tab-insights">
+    <div class="insights-grid" id="insightsGrid"></div>
+  </div>
+</div>
+
+<!-- CANCEL MODAL -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Cancel Subscription</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="cancelModalBody"></div>
+    <div class="modal-footer" id="cancelModalFooter"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const EMOJI={Entertainment:'🎬',Music:'🎵',Food:'🍔',Shopping:'📦',Productivity:'📝',Health:'💪',Finance:'💰',Education:'📚',Utilities:'⚡',Other:'📌'};
+const KNOWN_SUBS=['netflix','spotify','amazon prime','hotstar','youtube','notion','slack','zoom','figma','dropbox','icloud','google one','swiggy one','zomato pro','gym','fitness','insurance','microsoft','adobe','github','linkedin','disney'];
+
+let allTxns=[],subs=[],aiDetected=[],balance=24500;
+const reminders=new Map();
+
+/* ── AI ENGINE ── */
+function aiDetectSubscriptions(){
+  const map={};
+  allTxns.forEach(t=>{
+    const k=t.merchant.toLowerCase();
+    if(!map[k])map[k]=[];
+    map[k].push(t);
+  });
+  const detected=[];
+  Object.entries(map).forEach(([key,txns])=>{
+    const nonSub=txns.filter(t=>!t.isSubscription);
+    if(!nonSub.length)return;
+    if(subs.some(s=>s.merchant.toLowerCase()===key))return;
+    if(aiDetected.some(d=>d.id==='ai_'+key))return;
+
+    let conf=0; const signals=[];
+    if(KNOWN_SUBS.some(m=>key.includes(m))){conf+=40;signals.push('Known Service');}
+    if(nonSub.length>1){
+      const amounts=nonSub.map(t=>t.amount);
+      if(amounts.every(a=>a===amounts[0])){conf+=25;signals.push('Consistent Amount');}
+      else conf+=5;
+    }
+    if(nonSub.length>=3){conf+=20;signals.push('3+ Payments');}
+    else if(nonSub.length>=2){conf+=10;signals.push('Recurring');}
+    const amt=nonSub[0].amount;
+    if([99,119,149,199,249,299,399,499,599,799,999,1499,1999].includes(amt)){conf+=15;signals.push('Typical Sub Price');}
+    if(conf>=30){
+      detected.push({merchant:txns[0].merchant,category:txns[0].category,amount:amt,confidence:Math.min(conf,95),signals,txns:nonSub,id:'ai_'+key});
+    }
+  });
+  // Merge: keep dismissed ones, add new
+  const existing=aiDetected.filter(d=>d._dismissed);
+  aiDetected=[...existing,...detected.filter(d=>!existing.some(e=>e.id===d.id))].sort((a,b)=>b.confidence-a.confidence);
+  renderAIDetected();
+  document.getElementById('aiDetectedCount').textContent=aiDetected.filter(d=>!d._dismissed).length;
+}
+
+function renderAIDetected(){
+  const el=document.getElementById('aiDetectedList');
+  const visible=aiDetected.filter(d=>!d._dismissed);
+  if(!visible.length){
+    el.innerHTML=`<div class="empty-state"><div class="e">🤖</div><h3>All clear!</h3><p>No untracked recurring payments found. Make more payments to train the AI.</p></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="ai-section-title">Detected Recurring Payments</div>`+visible.map((d,i)=>`
+    <div class="ai-detect-card" style="animation-delay:${i*.06}s">
+      <div class="ai-card-top">
+        <div class="ai-card-icon">${EMOJI[d.category]||'📌'}</div>
+        <div><div class="ai-card-name">${d.merchant}</div><div class="ai-card-cat">${d.category} · ${d.txns.length} payment${d.txns.length>1?'s':''}</div></div>
+        <div class="ai-card-amount">₹${d.amount.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="ai-signals">${d.signals.map(s=>`<span class="ai-signal">✓ ${s}</span>`).join('')}</div>
+      <div class="ai-conf-row">
+        <span style="font-size:.6rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;">AI Confidence</span>
+        <div class="ai-conf-track" style="flex:1;"><div class="ai-conf-fill" style="width:${d.confidence}%;background:${d.confidence>=70?'#00c853':d.confidence>=45?'#ffd600':'#f97316'};"></div></div>
+        <span class="ai-conf-pct">${d.confidence}%</span>
+      </div>
+      <div class="ai-card-actions">
+        <button class="btn-ai-action approve" onclick="approveAI('${d.id}')">✓ Add as Subscription</button>
+        <button class="btn-ai-action dismiss" onclick="dismissAI('${d.id}')">✕ Dismiss</button>
+      </div>
+    </div>`).join('');
+}
+
+function approveAI(id){
+  const d=aiDetected.find(x=>x.id===id); if(!d)return;
+  d.txns.forEach(t=>t.isSubscription=true);
+  addToSubs(d.merchant,d.category,d.amount,'monthly',d.txns[0]);
+  d._dismissed=true;
+  aiDetectSubscriptions(); renderSubs(); refreshStats();
+  scheduleReminder(makeId(d.merchant));
+  showToast(`✓ ${d.merchant} added as subscription`);
+}
+
+function dismissAI(id){
+  const d=aiDetected.find(x=>x.id===id); if(!d)return;
+  d._dismissed=true;
+  renderAIDetected();
+  document.getElementById('aiDetectedCount').textContent=aiDetected.filter(d=>!d._dismissed).length;
+  showToast('Dismissed');
+}
+
+/* ── PAYMENT ── */
+function sendPayment(){
+  const to=document.getElementById('payTo').value.trim();
+  const amt=parseFloat(document.getElementById('payAmt').value);
+  const cat=document.getElementById('payCat').value;
+  const note=document.getElementById('payNote').value.trim();
+  const isSub=document.getElementById('subToggle').checked;
+  const cycle=document.getElementById('cycleSelect').value;
+  if(!to){showToast('⚠ Enter a payee');return;}
+  if(!amt||amt<=0){showToast('⚠ Enter a valid amount');return;}
+  if(amt>balance){showToast('⚠ Insufficient balance');return;}
+  balance-=amt;
+  updateBalanceDisplay();
+  const ref='TXN'+Date.now().toString().slice(-8);
+  const txn={merchant:to,amount:amt,category:cat,note,isSubscription:isSub,cycle,ref,timestamp:new Date()};
+  allTxns.unshift(txn);
+  if(isSub){
+    addToSubs(to,cat,amt,cycle,txn);
+    scheduleReminder(makeId(to));
+    showToast(`🔄 ${to} — ₹${amt} tracked as subscription!`);
+  } else {
+    showToast(`✓ Paid ₹${amt} to ${to}`);
+    setTimeout(()=>{
+      aiDetectSubscriptions();
+      const cnt=aiDetected.filter(d=>!d._dismissed).length;
+      if(cnt>0){
+        document.getElementById('aiBanner').style.display='block';
+        document.getElementById('aiBannerMsg').textContent=`${cnt} possible subscription${cnt>1?'s':''} detected — tap to review`;
+        document.getElementById('globalNotifDot').style.display='inline-block';
+      }
+    },400);
+  }
+  renderAllTxns(); refreshStats(); renderReminders();
+  document.getElementById('payTo').value='';
+  document.getElementById('payAmt').value='';
+  document.getElementById('payNote').value='';
+  document.getElementById('subToggle').checked=false;
+  document.getElementById('cycleSelect').style.display='none';
+  updateSyncTime();
+}
+
+function addToSubs(merchant,category,amount,cycle,txn){
+  const key=merchant.toLowerCase();
+  const ex=subs.find(s=>s.merchant.toLowerCase()===key);
+  if(ex){ex.lastAmount=amount;ex.lastDate=new Date(txn.timestamp);ex.totalPaid+=amount;ex.payments.push(txn);}
+  else subs.push({id:makeId(merchant),merchant,category,cycle,lastAmount:amount,lastDate:new Date(txn.timestamp),totalPaid:amount,payments:[txn],cancelled:false});
+}
+
+/* ── REMINDERS ── */
+function scheduleReminder(subId){
+  const sub=subs.find(s=>s.id===subId); if(!sub)return;
+  const next=nextBillingDate(sub);
+  reminders.set(subId,{date:next,dismissed:false,subId});
+  renderReminders(); updateReminderBadge();
+}
+
+function nextBillingDate(sub){
+  const d=new Date(sub.lastDate);
+  if(sub.cycle==='weekly')d.setDate(d.getDate()+7);
+  else if(sub.cycle==='monthly')d.setMonth(d.getMonth()+1);
+  else if(sub.cycle==='quarterly')d.setMonth(d.getMonth()+3);
+  else d.setFullYear(d.getFullYear()+1);
+  return d;
+}
+
+function daysUntil(date){return Math.ceil((date-new Date())/(1000*60*60*24));}
+
+function renderReminders(){
+  const el=document.getElementById('reminderList');
+  const active=[...reminders.values()].filter(r=>!r.dismissed);
+  if(!active.length){
+    el.innerHTML=`<div class="empty-state"><div class="e">🔔</div><h3>No upcoming reminders</h3><p>Reminders auto-set when you add or confirm subscriptions.</p></div>`;
+    return;
+  }
+  el.innerHTML=active.sort((a,b)=>a.date-b.date).map(r=>{
+    const sub=subs.find(s=>s.id===r.subId); if(!sub)return'';
+    const days=daysUntil(r.date);
+    const urgency=days<=1?'urgent':days<=5?'upcoming':'ok';
+    const label=days<=0?'Due TODAY!':days===1?'Tomorrow':`In ${days} days`;
+    const dateStr=r.date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    return `<div class="reminder-card ${urgency}">
+      <div class="reminder-icon">${EMOJI[sub.category]||'📌'}</div>
+      <div class="reminder-info">
+        <div class="reminder-name">${sub.merchant}</div>
+        <div class="reminder-due ${urgency}">🗓 ${label} · ${dateStr}</div>
+        <div style="font-size:.68rem;opacity:.4;margin-top:2px;">${sub.cycle} billing · ₹${sub.lastAmount.toLocaleString('en-IN')}</div>
+        <button class="btn-remind-dismiss" onclick="dismissReminder('${r.subId}')">Dismiss reminder</button>
+      </div>
+      <div class="reminder-amount">₹${sub.lastAmount.toLocaleString('en-IN')}</div>
+    </div>`;
+  }).join('');
+  updateReminderBadge();
+}
+
+function dismissReminder(subId){
+  const r=reminders.get(subId); if(r)r.dismissed=true;
+  renderReminders(); updateReminderBadge();
+  showToast('Reminder dismissed');
+}
+
+function updateReminderBadge(){
+  const cnt=[...reminders.values()].filter(r=>!r.dismissed).length;
+  document.getElementById('reminderCount').style.display=cnt>0?'inline-block':'none';
+}
+
+/* ── CANCEL SIMULATION ── */
+function openCancelModal(subId){
+  const sub=subs.find(s=>s.id===subId); if(!sub)return;
+  const mo=calcMonthly(sub.lastAmount,sub.cycle);
+  const nextStr=nextBillingDate(sub).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const steps=getCancelSteps(sub.merchant);
+  document.getElementById('cancelModalBody').innerHTML=`
+    <div style="margin-bottom:12px;">
+      <div style="font-size:.65rem;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-bottom:4px;">Cancelling</div>
+      <div style="font-weight:800;font-size:1.1rem;">${EMOJI[sub.category]||'📌'} ${sub.merchant}</div>
+      <div style="font-size:.8rem;opacity:.5;margin-top:2px;">₹${sub.lastAmount.toLocaleString('en-IN')}/${sub.cycle} · Next: ${nextStr}</div>
+    </div>
+    <div class="savings-highlight">
+      <div class="savings-label">You'd save per year</div>
+      <div class="savings-amount">₹${Math.round(mo*12).toLocaleString('en-IN')}</div>
+    </div>
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.4;margin:12px 0 6px;">How to Cancel</div>
+    <div class="cancel-steps">${steps.map((s,i)=>`<div class="cancel-step"><div class="step-num">${i+1}</div><div><div class="step-text">${s.text}</div><div class="step-sub">${s.sub||''}</div></div></div>`).join('')}</div>`;
+  document.getElementById('cancelModalFooter').innerHTML=`
+    <button class="btn-modal back" onclick="closeModal()">Keep Plan</button>
+    <button class="btn-modal confirm" onclick="confirmCancel('${subId}')">Cancel Subscription</button>`;
+  document.getElementById('cancelModal').classList.add('open');
+}
+
+function getCancelSteps(m){
+  const k=m.toLowerCase();
+  if(k.includes('netflix'))return[{text:'Go to netflix.com → Account',sub:'Sign in first'},{text:'Membership & Billing → Cancel Membership',sub:''},{text:'Confirm on next page',sub:'Access continues till billing date'},{text:'Screenshot the confirmation',sub:'Keep for records'}];
+  if(k.includes('spotify'))return[{text:'Visit spotify.com/account',sub:''},{text:'Your plan → Change plan → Free',sub:'This cancels Premium'},{text:'Features remain till cycle end',sub:''}];
+  if(k.includes('amazon')||k.includes('prime'))return[{text:'amazon.in → Account → Prime membership',sub:''},{text:'Manage membership → End membership',sub:''},{text:'Choose when to end',sub:'Immediately or at period end'},{text:'Confirm via OTP',sub:''}];
+  return[{text:`Open ${m} app or website`,sub:'Sign in to your account'},{text:'Go to Settings → Subscription / Billing',sub:''},{text:'Select Cancel / Downgrade plan',sub:'Follow on-screen steps'},{text:'Screenshot the confirmation',sub:'Keep for your records'}];
+}
+
+function confirmCancel(subId){
+  const sub=subs.find(s=>s.id===subId); if(!sub)return;
+  sub.cancelled=true;
+  const savings=Math.round(calcMonthly(sub.lastAmount,sub.cycle)*12);
+  document.getElementById('cancelModalBody').innerHTML=`
+    <div class="cancel-result">
+      <div class="cancel-result-icon">🎉</div>
+      <div class="cancel-result-title">Subscription Cancelled!</div>
+      <div class="cancel-result-msg">${sub.merchant} marked as cancelled in SubRadar.</div>
+      <div class="savings-highlight" style="margin-top:16px;">
+        <div class="savings-label">Annual Savings</div>
+        <div class="savings-amount">₹${savings.toLocaleString('en-IN')}</div>
+        <div class="savings-label">freed up</div>
+      </div>
+      <div class="cancel-result-msg" style="margin-top:12px;font-size:.72rem;">You can restore anytime from your dashboard.</div>
+    </div>`;
+  document.getElementById('cancelModalFooter').innerHTML=`<button class="btn-modal back" style="flex:1;" onclick="closeModal()">Done</button>`;
+  const r=reminders.get(subId); if(r)r.dismissed=true;
+  renderSubs(); refreshStats(); renderReminders();
+  showToast(`✓ ${sub.merchant} cancelled — saving ₹${savings.toLocaleString('en-IN')}/yr`);
+}
+
+function restoreSub(subId){
+  const sub=subs.find(s=>s.id===subId); if(!sub)return;
+  sub.cancelled=false;
+  scheduleReminder(subId);
+  renderSubs(); refreshStats();
+  showToast(`✓ ${sub.merchant} restored`);
+}
+
+function closeModal(){document.getElementById('cancelModal').classList.remove('open');}
+
+/* ── RENDER SUBS ── */
+function renderSubs(){
+  const q=(document.getElementById('subSearch').value||'').toLowerCase();
+  const cf=document.getElementById('subCatF').value;
+  const cy=document.getElementById('subCycleF').value;
+  const filtered=subs.filter(s=>{
+    if(q&&!s.merchant.toLowerCase().includes(q))return false;
+    if(cf&&s.category!==cf)return false;
+    if(cy&&s.cycle!==cy)return false;
+    return true;
+  });
+  const el=document.getElementById('subList');
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="e">${allTxns.length===0?'📡':'🔎'}</div><h3>${allTxns.length===0?'No data yet':'Nothing found'}</h3><p>${allTxns.length===0?'Make a payment in PayZap to start tracking.':'Try different filters.'}</p></div>`;
+    return;
+  }
+  const maxP=Math.max(1,...subs.map(s=>s.payments.length));
+  el.innerHTML=filtered.map((s,i)=>{
+    const mo=calcMonthly(s.lastAmount,s.cycle);
+    const barPct=Math.round(s.payments.length/maxP*100);
+    const dateStr=s.lastDate.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    const next=nextBillingDate(s);
+    const nextStr=next.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    const days=daysUntil(next);
+    const r=reminders.get(s.id);
+    const hasDue=r&&!r.dismissed&&days<=5&&!s.cancelled;
+    const conf=subConfidence(s);
+    return `<div class="sub-card${s.cancelled?' cancelled':''}" style="animation-delay:${i*.04}s">
+      ${s.cancelled?'<div class="cancelled-stamp">CANCELLED</div>':''}
+      ${hasDue&&!s.cancelled?`<div class="due-badge">🔔 DUE ${days<=0?'TODAY':days===1?'TOMORROW':'IN '+days+'D'}</div>`:''}
+      <div class="sub-top">
+        <div class="sub-icon">${EMOJI[s.category]||'📌'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="sub-name">${s.merchant}</div>
+          <div class="sub-cat">${s.category}</div>
+          <span class="cycle-pill ${s.cycle}">${s.cycle}</span>
+        </div>
+        <div class="sub-right">
+          <div class="sub-amount">₹${s.lastAmount.toLocaleString('en-IN')}</div>
+          <div class="sub-mo">~₹${Math.round(mo).toLocaleString('en-IN')}/mo</div>
+        </div>
+      </div>
+      ${!s.cancelled?`<div class="next-billing"><span>📅</span><span class="nb-lbl">Next billing</span><span class="nb-date">${nextStr} · ${days>0?days+'d away':'Today!'}</span></div>`:''}
+      <div class="conf-row">
+        <span class="conf-lbl">Sub Score</span>
+        <div class="conf-track"><div class="conf-fill" style="width:${conf}%;background:${conf>=75?'#00c853':conf>=50?'#ffd600':'#f97316'};"></div></div>
+        <span class="conf-pct">${conf}%</span>
+      </div>
+      <div class="sub-bottom" style="margin-top:8px;">
+        <div><div class="sub-meta-lbl">Last Paid</div><div class="sub-meta-val">${dateStr}</div></div>
+        <div style="text-align:right;"><div class="sub-meta-lbl">Total Paid</div><div class="sub-meta-val">₹${s.totalPaid.toLocaleString('en-IN')}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:.6rem;opacity:.4;">${s.payments.length} payment${s.payments.length!==1?'s':''}</span>
+        <div style="flex:1;height:4px;background:rgba(0,0,0,0.08);"><div style="height:100%;background:var(--purple);width:${barPct}%;"></div></div>
+      </div>
+      <div class="sub-actions">
+        ${!s.cancelled
+          ?`<button class="btn-sub-action remind" onclick="setReminderNow('${s.id}')">🔔 Remind</button>
+            <button class="btn-sub-action cancel" onclick="openCancelModal('${s.id}')">✕ Cancel</button>`
+          :`<button class="btn-sub-action restore" onclick="restoreSub('${s.id}')">↩ Restore</button>`}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('subCount').textContent=subs.filter(s=>!s.cancelled).length;
+}
+
+function subConfidence(sub){
+  let c=30;
+  if(sub.payments.length>=3)c+=30; else if(sub.payments.length>=2)c+=15;
+  if(KNOWN_SUBS.some(m=>sub.merchant.toLowerCase().includes(m)))c+=30;
+  if([99,119,149,199,249,299,399,499,599,799,999,1499].includes(sub.lastAmount))c+=10;
+  return Math.min(c,98);
+}
+
+function setReminderNow(subId){
+  const r=reminders.get(subId);
+  if(r)r.dismissed=false; else scheduleReminder(subId);
+  renderReminders(); updateReminderBadge();
+  showToast('🔔 Reminder set for next billing!');
+}
+
+/* ── ALL TXNS ── */
+function renderAllTxns(){
+  const el=document.getElementById('txnList');
+  if(!allTxns.length){el.innerHTML=`<div class="empty-state"><div class="e">💳</div><h3>No transactions yet</h3><p>Make a payment above to get started.</p></div>`;return;}
+  el.innerHTML=allTxns.slice(0,20).map((t,i)=>{
+    const d=new Date(t.timestamp);
+    const ds=d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    const ts=d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="txn-item" style="animation-delay:${i*.03}s">
+      <div class="txn-icon">${EMOJI[t.category]||'📌'}</div>
+      <div class="txn-info">
+        <div class="txn-merchant">${t.merchant}${t.isSubscription?'<span class="sub-badge">SUB</span>':''}</div>
+        <div class="txn-meta">${t.category} · ${t.ref}</div>
+        ${t.note?`<div class="txn-meta" style="opacity:.3;">${t.note}</div>`:''}
+      </div>
+      <div class="txn-right">
+        <div class="txn-amount">−₹${t.amount.toLocaleString('en-IN')}</div>
+        <div class="txn-date">${ds}, ${ts}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── INSIGHTS ── */
+function renderInsights(){
+  const catMap={};
+  allTxns.forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
+  const catArr=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const maxC=Math.max(1,...Object.values(catMap));
+  const subTot=allTxns.filter(t=>t.isSubscription).reduce((a,t)=>a+t.amount,0);
+  const regTot=allTxns.filter(t=>!t.isSubscription).reduce((a,t)=>a+t.amount,0);
+  const tot=subTot+regTot||1;
+  const activeSubs=subs.filter(s=>!s.cancelled);
+  const monthly=activeSubs.reduce((a,s)=>a+calcMonthly(s.lastAmount,s.cycle),0);
+  const topSub=[...activeSubs].sort((a,b)=>b.lastAmount-a.lastAmount)[0];
+  const savedMo=subs.filter(s=>s.cancelled).reduce((a,s)=>a+calcMonthly(s.lastAmount,s.cycle),0);
+  document.getElementById('insightsGrid').innerHTML=`
+    <div class="insight-card">
+      <div class="insight-icon">💸</div><div class="insight-title">Daily Sub Cost</div>
+      <div class="insight-val">₹${Math.round(monthly/30).toLocaleString('en-IN')}/day</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-icon">📅</div><div class="insight-title">Yearly Sub Spend</div>
+      <div class="insight-val">₹${Math.round(monthly*12).toLocaleString('en-IN')}</div>
+    </div>
+    ${savedMo>0?`<div class="insight-card">
+      <div class="insight-icon">✅</div><div class="insight-title">Saved by Cancelling</div>
+      <div class="insight-val" style="color:var(--green);">₹${Math.round(savedMo*12).toLocaleString('en-IN')}/yr</div>
+    </div>`:''}
+    ${topSub?`<div class="insight-card">
+      <div class="insight-icon">🏆</div><div class="insight-title">Most Expensive Sub</div>
+      <div class="insight-val">${topSub.merchant}</div>
+    </div>`:''}
+    <div class="insight-card full">
+      <div class="insight-icon">📊</div><div class="insight-title" style="margin-bottom:10px;">Spending by Category</div>
+      ${catArr.length?catArr.map(([c,v])=>`<div class="bar-row"><div class="bar-label">${EMOJI[c]||'📌'} ${c}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxC*100)}%"></div></div><div class="bar-val">₹${Math.round(v).toLocaleString('en-IN')}</div></div>`).join(''):'<div style="opacity:.4;font-size:.85rem;">No data yet.</div>'}
+    </div>
+    <div class="insight-card full">
+      <div class="insight-icon">🥧</div><div class="insight-title" style="margin-bottom:10px;">Subscription vs Regular Split</div>
+      <div class="bar-row"><div class="bar-label">🔄 Subscriptions</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(subTot/tot*100)}%"></div></div><div class="bar-val">₹${Math.round(subTot).toLocaleString('en-IN')}</div></div>
+      <div class="bar-row"><div class="bar-label">💳 Regular</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(regTot/tot*100)}%"></div></div><div class="bar-val">₹${Math.round(regTot).toLocaleString('en-IN')}</div></div>
+    </div>`;
+}
+
+/* ── HELPERS ── */
+function calcMonthly(amt,cycle){return cycle==='weekly'?amt*4.33:cycle==='monthly'?amt:cycle==='quarterly'?amt/3:amt/12;}
+function makeId(s){return s.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');}
+function refreshStats(){
+  const active=subs.filter(s=>!s.cancelled);
+  const mo=active.reduce((a,s)=>a+calcMonthly(s.lastAmount,s.cycle),0);
+  document.getElementById('statMonthly').textContent=Math.round(mo).toLocaleString('en-IN');
+  document.getElementById('statYearlySub').textContent=`≈ ₹${Math.round(mo*12).toLocaleString('en-IN')} per year · ${active.length} plan${active.length!==1?'s':''}`;
+  document.getElementById('statCount').textContent=active.length;
+  document.getElementById('statTxns').textContent=allTxns.length+' txns total';
+  document.getElementById('subCount').textContent=active.length;
+}
+function switchApp(app){
+  ['pay','sub'].forEach(a=>{document.getElementById('panel-'+a).classList.toggle('visible',a===app);document.getElementById('nav-'+a).classList.toggle('active',a===app);});
+  if(app==='sub'){renderSubs();renderReminders();}
+}
+function switchSubrTab(tab){
+  ['subs','ai','reminders','insights'].forEach(t=>{document.getElementById('subr-tab-'+t).classList.toggle('visible',t===tab);});
+  document.querySelectorAll('.btn-tab').forEach((b,i)=>b.classList.toggle('active',['subs','ai','reminders','insights'][i]===tab));
+  if(tab==='insights')renderInsights();
+  if(tab==='ai')aiDetectSubscriptions();
+  if(tab==='reminders')renderReminders();
+}
+function toggleCycle(){document.getElementById('cycleSelect').style.display=document.getElementById('subToggle').checked?'block':'none';}
+function fillQuick(merchant,cat,amt,cycle){
+  document.getElementById('payTo').value=merchant;
+  if(cat)document.getElementById('payCat').value=cat;
+  if(amt)document.getElementById('payAmt').value=amt;
+  if(merchant){document.getElementById('subToggle').checked=true;document.getElementById('cycleSelect').style.display='block';document.getElementById('cycleSelect').value=cycle;}
+}
+function updateSyncTime(){document.getElementById('syncTime').textContent='synced '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+/* ── BALANCE EDITOR ── */
+function updateBalanceDisplay(){
+  document.getElementById('payzapBal').textContent='₹'+balance.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function openBalanceEditor(){
+  document.getElementById('balanceInput').value=balance;
+  document.getElementById('balanceModal').classList.add('open');
+  setTimeout(()=>document.getElementById('balanceInput').select(),50);
+}
+function closeBalanceModal(){document.getElementById('balanceModal').classList.remove('open');}
+function setBalancePreset(v){document.getElementById('balanceInput').value=v;}
+function applyBalance(){
+  const v=parseFloat(document.getElementById('balanceInput').value);
+  if(isNaN(v)||v<0){showToast('⚠ Enter a valid amount');return;}
+  balance=v;
+  updateBalanceDisplay();
+  closeBalanceModal();
+  showToast('✓ Balance updated to ₹'+balance.toLocaleString('en-IN'));
+}
+function openAddMoney(){
+  document.getElementById('addMoneyInput').value='';
+  document.getElementById('addMoneyModal').classList.add('open');
+  setTimeout(()=>document.getElementById('addMoneyInput').focus(),50);
+}
+function closeAddMoneyModal(){document.getElementById('addMoneyModal').classList.remove('open');}
+function applyAddMoney(){
+  const v=parseFloat(document.getElementById('addMoneyInput').value);
+  if(isNaN(v)||v<=0){showToast('⚠ Enter a valid amount');return;}
+  balance+=v;
+  updateBalanceDisplay();
+  closeAddMoneyModal();
+  showToast('✓ ₹'+v.toLocaleString('en-IN')+' added to wallet');
+}
+
+/* ── SEED ── */
+function init(){
+  const seed=[
+    {merchant:'Netflix',category:'Entertainment',amount:499,isSubscription:true,cycle:'monthly'},
+    {merchant:'Spotify',category:'Music',amount:119,isSubscription:true,cycle:'monthly'},
+    {merchant:'Amazon Prime',category:'Shopping',amount:1499,isSubscription:true,cycle:'yearly'},
+    {merchant:'Zomato',category:'Food',amount:350,isSubscription:false},
+    {merchant:'Zomato',category:'Food',amount:350,isSubscription:false},
+    {merchant:'Zomato',category:'Food',amount:350,isSubscription:false},
+    {merchant:'Swiggy',category:'Food',amount:280,isSubscription:false},
+    {merchant:'Swiggy',category:'Food',amount:280,isSubscription:false},
+  ];
+  seed.forEach((s,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-i*10);
+    const txn={...s,ref:'TXN'+i,timestamp:d,cycle:s.cycle||'monthly'};
+    allTxns.push(txn);
+    if(s.isSubscription)addToSubs(s.merchant,s.category,s.amount,s.cycle||'monthly',txn);
+  });
+  subs.forEach(s=>scheduleReminder(s.id));
+  renderAllTxns(); refreshStats(); aiDetectSubscriptions(); updateSyncTime();
+  if(aiDetected.filter(d=>!d._dismissed).length>0){
+    document.getElementById('globalNotifDot').style.display='inline-block';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
